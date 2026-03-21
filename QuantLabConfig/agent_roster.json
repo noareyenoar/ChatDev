@@ -18,7 +18,7 @@
     {
       "id": "Alpha Researcher",
       "phase_owner": "Alpha_Discovery",
-      "model": "llama3.3:8b",
+      "model": "deepseek-r1:14b",
       "tools": [
         "search_market_intelligence",
         "search_arxiv_papers",
@@ -38,14 +38,14 @@
     {
       "id": "Quant Architect",
       "phase_owner": "Model_Architecture",
-      "model": "qwen3:8b",
+      "model": "qwen3.5:9b",
       "tools": [],
       "responsibility": "Convert hypotheses into statistical or ML architectures and explicit signal definitions."
     },
     {
       "id": "Algo Developer",
       "phase_owner": "Signal_Engineering",
-      "model": "qwen3:8b",
+      "model": "qwen3.5:9b",
       "tools": [
         "init_python_env",
         "install_python_packages",
@@ -63,7 +63,7 @@
     {
       "id": "Risk Validator",
       "phase_owner": "Backtest_Execution",
-      "model": "phi-4-mini:3.8b",
+      "model": "phi4-mini-reasoning:3.8b",
       "tools": [
         "run_strategy_backtest",
         "evaluate_agent_kpis",

@@ -1,0 +1,30 @@
+{
+  "compatibility_note": "Legacy prompt-1 role mapping preserved for migration. Runtime workflow uses QuantLabConfig/agent_roster.json and yaml_instance/QuantLab_TDLC.yaml.",
+  "roles": [
+    {
+      "legacy": "CEO",
+      "name": "Fund Manager",
+      "focus": "Risk/reward objectives, mandate control, and portfolio constraints"
+    },
+    {
+      "legacy": "CPO",
+      "name": "Data Scientist",
+      "focus": "Feature engineering, preprocessing, and pipeline design"
+    },
+    {
+      "legacy": "CTO",
+      "name": "Lead Quant",
+      "focus": "Algorithm selection and model architecture"
+    },
+    {
+      "legacy": "Programmer",
+      "name": "Quant Developer",
+      "focus": "Python, Pandas, and PyTorch implementation"
+    },
+    {
+      "legacy": null,
+      "name": "Market Researcher",
+      "focus": "Browsing, data scraping, macro context, and quant paper discovery"
+    }
+  ]
+}

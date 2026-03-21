@@ -1,0 +1,124 @@
+{
+  "project_name": "QuantLab_TDLC",
+  "version": "1.0.0",
+  "description": "Hypothesis-Driven Quantitative Research Multi-Agent System with Local LLM",
+  "llm_backend": {
+    "provider": "ollama",
+    "base_url": "http://localhost:11434",
+    "hardware_constraint": "12GB_VRAM_Optimized",
+    "execution_mode": "sequential_loading"
+  },
+  "central_knowledge_base": {
+    "description": "Shared repository for pre-trained neural network architectures and company data.",
+    "access_level": ["Quant Architect", "Algo Developer", "Risk Validator"],
+    "model_zoo": [
+      {
+        "id": "model_01",
+        "name": "The Robust Baseline",
+        "type": "Simple MLP",
+        "architecture": "Input (10-20 Indicators) -> Dense(128) -> Dense(64) -> Dense(32) -> Output (3 Classes)",
+        "activation": "ReLU",
+        "regularization": "Dropout (0.2), BatchNorm",
+        "rationale": "Handles noisy trading data. Tapering nodes forces feature extraction. Dropout prevents overfitting to specific indicators."
+      },
+      {
+        "id": "model_02",
+        "name": "The Sequential Expert",
+        "type": "LSTM/GRU",
+        "architecture": "Input (Lookback 60 days) -> LSTM (Hidden 64, 2 Layers) -> Linear (32) -> Output",
+        "activation": "Tanh (Internal), Softmax (Output)",
+        "regularization": "Weight Decay (L2)",
+        "rationale": "Captures trend and momentum. Parameter sharing and memory cells remember historical impacts (e.g., EMA crossovers from 3 days ago)."
+      },
+      {
+        "id": "model_03",
+        "name": "The Pattern Seeker",
+        "type": "1D-CNN",
+        "architecture": "Input -> Conv1d (Filter size 3) -> MaxPool -> Conv1d -> Flatten -> Linear -> Output",
+        "activation": "ELU",
+        "regularization": "Spatial Dropout",
+        "rationale": "Treats price action as a 1D image to find structural patterns (e.g., Head & Shoulders) regardless of exact timing. Good for reversal detection."
+      },
+      {
+        "id": "model_04",
+        "name": "The Risk-Averse Model",
+        "type": "Modern Transformer",
+        "architecture": "Input -> Multi-Head Attention -> Feed Forward -> Output",
+        "activation": "GELU",
+        "regularization": "Layer Normalization",
+        "rationale": "Uses attention mechanism to weigh the importance of specific past days (e.g., historical support levels) over immediate sequential data."
+      },
+      {
+        "id": "model_05",
+        "name": "The Probability Master",
+        "type": "Logistic Reg. Style NN",
+        "architecture": "Input -> Linear (16) -> Linear (8) -> Output",
+        "activation": "Sigmoid",
+        "regularization": "L1 Regularization (Lasso)",
+        "rationale": "Micro-model for high-precision probability output. L1 regularization acts as feature selection by driving useless indicator weights to zero."
+      }
+    ]
+  },
+  "team_roster": {
+    "Alpha_Researcher": {
+      "role": "Information Retrieval Specialist",
+      "model": "llama3.1:8b-instruct-q5_K_M",
+      "tools": ["web_browser_tool", "arxiv_scraper", "yfinance_api"],
+      "system_prompt": "Scrape the web and financial databases for macroeconomic sentiment and quantitative papers. Output structured hypotheses."
+    },
+    "Portfolio_Manager": {
+      "role": "Strategy & Risk Director",
+      "model": "mistral-nemo:12b",
+      "tools": [],
+      "system_prompt": "Define risk constraints (Sharpe, Drawdown limit). Validate the final strategy against the fund's mandate."
+    },
+    "Quant_Architect": {
+      "role": "Lead Algorithm Designer",
+      "model": "qwen2.5-math:7b",
+      "tools": ["query_knowledge_base"],
+      "system_prompt": "Translate alpha hypotheses into ML architectures. Query the central_knowledge_base to select or modify baseline models (e.g., LSTM, 1D-CNN) based on the task."
+    },
+    "Algo_Developer": {
+      "role": "Quantitative Programmer",
+      "model": "qwen2.5-coder:7b",
+      "tools": ["python_interpreter", "file_system_writer"],
+      "system_prompt": "Write robust Python code using PyTorch and Pandas. Implement the architecture provided by the Quant Architect."
+    },
+    "Risk_Validator": {
+      "role": "Backtest & Optimization Auditor",
+      "model": "qwen2.5-coder:7b",
+      "tools": ["backtest_engine", "log_parser"],
+      "system_prompt": "Run out-of-sample backtests. Analyze tracebacks and financial metrics. Detect look-ahead bias and overfitting. Send feedback loops."
+    }
+  },
+  "tdlc_chat_chain": {
+    "phases": [
+      {
+        "phase": "Alpha_Discovery",
+        "agents_involved": ["Portfolio_Manager", "Alpha_Researcher"],
+        "objective": "Define trading universe and gather market sentiment/papers."
+      },
+      {
+        "phase": "Model_Architecture",
+        "agents_involved": ["Quant_Architect", "Portfolio_Manager"],
+        "objective": "Select and adapt a base model from central_knowledge_base to fit the alpha hypothesis."
+      },
+      {
+        "phase": "Signal_Engineering",
+        "agents_involved": ["Quant_Architect", "Algo_Developer"],
+        "objective": "Write the Python code for data pipelines and the selected PyTorch model."
+      },
+      {
+        "phase": "Backtest_Execution",
+        "agents_involved": ["Algo_Developer", "Risk_Validator"],
+        "objective": "Execute the backtest on historical data and generate performance metrics."
+      },
+      {
+        "phase": "Recursive_Optimization",
+        "agents_involved": ["Risk_Validator", "Algo_Developer", "Quant_Architect"],
+        "objective": "Review metrics. If target Sharpe/Drawdown fails, isolate the issue (logic vs. overfitting) and trigger a rewrite loop."
+      }
+    ],
+    "max_recursive_loops": 5
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "project": "QuantLab-TDLC",
+  "runtime": {
+    "provider": "ollama-openai-compatible",
+    "base_url_env": "OLLAMA_BASE_URL",
+    "execution_mode": "sequential_model_loading",
+    "hardware_profile": "12GB_VRAM"
+  },
+  "legacy_mapping": {
+    "CEO": "Portfolio Manager",
+    "CPO": "Data Scientist",
+    "CTO": "Quant Architect",
+    "Programmer": "Algo Developer",
+    "NewRole": "Alpha Researcher",
+    "NewValidator": "Risk Validator"
+  },
+  "agents": [
+    {
+      "id": "Alpha Researcher",
+      "phase_owner": "Alpha_Discovery",
+      "model": "llama3.3:8b",
+      "tools": [
+        "search_market_intelligence",
+        "search_arxiv_papers",
+        "fetch_price_history",
+        "web_search",
+        "read_webpage_content"
+      ],
+      "responsibility": "Retrieve macro, sentiment, and academic signals; produce structured alpha hypotheses."
+    },
+    {
+      "id": "Portfolio Manager",
+      "phase_owner": "Alpha_Discovery",
+      "model": "mistral-nemo:12b",
+      "tools": [],
+      "responsibility": "Define mandate, asset universe, capital constraints, and approval thresholds."
+    },
+    {
+      "id": "Quant Architect",
+      "phase_owner": "Model_Architecture",
+      "model": "qwen3:8b",
+      "tools": [],
+      "responsibility": "Convert hypotheses into statistical or ML architectures and explicit signal definitions."
+    },
+    {
+      "id": "Algo Developer",
+      "phase_owner": "Signal_Engineering",
+      "model": "qwen3:8b",
+      "tools": [
+        "init_python_env",
+        "install_python_packages",
+        "uv_run",
+        "save_file",
+        "apply_text_edits",
+        "describe_available_files",
+        "read_file_segment",
+        "search_in_files",
+        "list_directory",
+        "fetch_price_history"
+      ],
+      "responsibility": "Implement data pipelines, strategy code, and any supporting backtest assets."
+    },
+    {
+      "id": "Risk Validator",
+      "phase_owner": "Backtest_Execution",
+      "model": "phi-4-mini:3.8b",
+      "tools": [
+        "run_strategy_backtest",
+        "evaluate_agent_kpis",
+        "describe_available_files",
+        "read_file_segment",
+        "search_in_files",
+        "list_directory"
+      ],
+      "responsibility": "Run out-of-sample evaluation, detect risk breaches, and score agent contribution for the owner."
+    }
+  ]
+}

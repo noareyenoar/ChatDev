@@ -1,0 +1,81 @@
+{
+  "agent_output_contracts": {
+    "Alpha Researcher": {
+      "type": "object",
+      "required": ["phase", "market_view", "hypotheses", "research_kpi"],
+      "properties": {
+        "phase": {"const": "Alpha_Discovery"},
+        "market_view": {"type": "string"},
+        "hypotheses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "rationale", "evidence"],
+            "properties": {
+              "name": {"type": "string"},
+              "rationale": {"type": "string"},
+              "evidence": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "research_kpi": {
+          "type": "object",
+          "required": ["quality_score", "decision_confidence"],
+          "properties": {
+            "quality_score": {"type": "number"},
+            "decision_confidence": {"type": "number"}
+          }
+        }
+      }
+    },
+    "Portfolio Manager": {
+      "type": "object",
+      "required": ["phase", "asset_universe", "risk_constraints", "success_thresholds", "manager_kpi"],
+      "properties": {
+        "phase": {"const": "Alpha_Discovery"},
+        "asset_universe": {"type": "array", "items": {"type": "string"}},
+        "risk_constraints": {"type": "object"},
+        "success_thresholds": {"type": "object"},
+        "manager_kpi": {"type": "object"}
+      }
+    },
+    "Quant Architect": {
+      "type": "object",
+      "required": ["phase", "model_family", "signal_definition", "features", "targets", "architect_kpi"],
+      "properties": {
+        "phase": {"const": "Model_Architecture"},
+        "model_family": {"type": "string"},
+        "signal_definition": {"type": "string"},
+        "features": {"type": "array", "items": {"type": "string"}},
+        "targets": {"type": "object"},
+        "architect_kpi": {"type": "object"}
+      }
+    },
+    "Algo Developer": {
+      "type": "object",
+      "required": ["phase", "files_changed", "run_command", "backtest_contract", "developer_kpi"],
+      "properties": {
+        "phase": {"const": "Signal_Engineering"},
+        "files_changed": {"type": "array", "items": {"type": "string"}},
+        "run_command": {"type": "string"},
+        "backtest_contract": {"type": "object"},
+        "developer_kpi": {"type": "object"}
+      }
+    },
+    "Risk Validator": {
+      "type": "object",
+      "required": ["phase", "decision", "backtest_metrics", "agent_kpis", "owner_summary"],
+      "properties": {
+        "phase": {"const": "Recursive_Optimization"},
+        "decision": {
+          "type": "string",
+          "enum": ["APPROVED", "REVISE_MODEL", "REVISE_IMPLEMENTATION"]
+        },
+        "backtest_metrics": {"type": "object"},
+        "agent_kpis": {"type": "array", "items": {"type": "object"}},
+        "owner_summary": {"type": "object"}
+      }
+    }
+  },
+  "owner_actions": ["retain", "suspend", "dismiss"]
+}

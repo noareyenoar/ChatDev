@@ -1,0 +1,19 @@
+{
+  "compatibility_note": "Legacy prompt-1 chat chain preserved for migration. Runtime workflow uses the refined prompt-2 TDLC loop in yaml_instance/QuantLab_TDLC.yaml.",
+  "phases": [
+    "Market_Analysis",
+    "Strategy_Design",
+    "Implementation",
+    "Backtesting_Validation",
+    "Risk_Audit"
+  ],
+  "recursive_logic": {
+    "source_phase": "Backtesting_Validation",
+    "target_phase": "Optimization",
+    "thresholds": {
+      "min_sharpe": 1.0,
+      "max_drawdown": 0.2
+    },
+    "fallback_routes": ["Strategy_Design", "Implementation"]
+  }
+}

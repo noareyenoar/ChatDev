@@ -1,0 +1,27 @@
+version: 0.4.0
+vars: {}
+graph:
+  id: smoke_sim
+  description: Minimal smoke simulation workflow using the simulated provider
+  is_majority_voting: false
+  nodes:
+    - id: A
+      type: agent
+      config:
+        provider: simulated
+        name: simulated-model
+        role: |
+          You are a simulated assistant used for smoke testing. Reply concisely.
+    - id: B
+      type: literal
+      config:
+        content: "SIMULATED EXECUTION RECORDED"
+        role: assistant
+  edges:
+    - from: A
+      to: B
+  log_level: INFO
+  start:
+    - A
+  end:
+    - B

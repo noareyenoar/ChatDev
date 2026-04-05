@@ -10,6 +10,7 @@ class WorkflowRequest(BaseModel):
     task_prompt: str
     session_id: Optional[str] = None
     attachments: Optional[List[str]] = None
+    variables: Optional[Dict[str, Any]] = None
     log_level: Literal["INFO", "DEBUG"] = "INFO"
 
 

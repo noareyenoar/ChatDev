@@ -65,6 +65,8 @@ def validate_all():
                 # Indent error output
                 if result.stdout:
                     print("  stdout:", result.stdout.strip().replace("\n", "\n  "))
+                if result.stderr:
+                    print("  stderr:", result.stderr.strip().replace("\n", "\n  "))
                 # Validation errors usually print to stdout/stderr depending on impl
                 # Our new main prints to stdout for success/failure message
                 failed += 1

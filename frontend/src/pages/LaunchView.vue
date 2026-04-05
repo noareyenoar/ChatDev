@@ -1780,6 +1780,25 @@ const launchWorkflow = async () => {
   status.value = 'Launching...'
 
   try {
+    let variables = null
+    const rawVariables = configStore.WORKFLOW_VARIABLES_JSON?.trim()
+    if (rawVariables) {
+      try {
+        variables = JSON.parse(rawVariables)
+      } catch (error) {
+        alert(`Workflow variable overrides must be valid JSON: ${error.message}`)
+        status.value = 'Waiting for launch...'
+        shouldGlow.value = true
+        return
+      }
+      if (variables === null || Array.isArray(variables) || typeof variables !== 'object') {
+        alert('Workflow variable overrides must be a JSON object.')
+        status.value = 'Waiting for launch...'
+        shouldGlow.value = true
+        return
+      }
+    }
+
     const response = await fetch('/api/workflow/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1787,7 +1806,8 @@ const launchWorkflow = async () => {
         yaml_file: selectedFile.value,
         task_prompt: trimmedPrompt,
         session_id: sessionId,
-        attachments: attachmentIds
+        attachments: attachmentIds,
+        variables
       })
     })
 

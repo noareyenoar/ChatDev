@@ -127,7 +127,10 @@ See our paper in [Multi-Agent Collaboration via Evolving Orchestration](https://
     cp .env.example .env
     ```
 *   **Model Keys**: Set `API_KEY` and `BASE_URL` in `.env` for your LLM provider.
+*   **QuantLab workflow note**: `yaml_instance/QuantLab_TDLC.yaml` now resolves its model endpoint from the same `BASE_URL` and `API_KEY` values. For local Ollama, use `BASE_URL=http://localhost:11434/v1` and a non-empty placeholder such as `API_KEY=ollama`.
+*   **Offline QuantLab smoke test**: `yaml_instance/QuantLab_TDLC_simulated.yaml` runs end-to-end with the built-in simulated provider and does not require any external model service.
 *   **YAML placeholders**: Use `${VAR}`（e.g., `${API_KEY}`）in configuration files to reference these variables.
+*   **Launch UI overrides**: The Launch page Settings dialog accepts an optional JSON object of per-run variable overrides, which is useful when you want to run a workflow with different provider settings without editing `.env`.
 
 ### ⚡️ Run the Application
 
@@ -181,6 +184,13 @@ make dev
     make validate-yamls
     ```
     Checks all YAML files for syntax and schema errors.
+
+*   **Run the offline QuantLab simulation**:
+  ```powershell
+  @'
+  offline quantlab simulation
+  '@ | .venv-1\Scripts\python.exe run.py --path yaml_instance/QuantLab_TDLC_simulated.yaml --name quantlab_sim
+  ```
 
 ### 🦞 Run with OpenClaw
 OpenClaw can integrate with ChatDev by invoking existing agent teams or dynamically creating new agent teams within ChatDev.

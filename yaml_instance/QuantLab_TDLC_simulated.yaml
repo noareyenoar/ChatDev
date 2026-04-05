@@ -1,0 +1,129 @@
+version: 0.4.0
+graph:
+  id: QuantLab_TDLC_simulated
+  description: Offline QuantLab workflow using the simulated provider and local tools.
+  log_level: INFO
+  is_majority_voting: false
+  initial_instruction: |
+    Run QuantLab end-to-end in offline simulation mode.
+    Keep every agent output machine-readable JSON.
+  start:
+    - Alpha Discovery Prompt
+  end:
+    - FINAL
+  nodes:
+    - id: Alpha Discovery Prompt
+      type: literal
+      description: Seed instruction for the offline QuantLab chain.
+      config:
+        role: user
+        content: |
+          Build a quantitative trading research loop with these phases:
+          1. Alpha_Discovery
+          2. Model_Architecture
+          3. Signal_Engineering
+          4. Backtest_Execution
+          5. Recursive_Optimization
+
+          Use strict JSON outputs only.
+    - id: Alpha Researcher
+      type: agent
+      context_window: -1
+      config:
+        provider: simulated
+        name: quantlab-sim
+        role: |
+          You are Alpha Researcher in QuantLab-TDLC.
+          Your job is to retrieve market context, macro themes, and state-of-the-art quant ideas.
+          Use the available research tools when useful.
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: search_market_intelligence
+                - name: search_arxiv_papers
+                - name: fetch_price_history
+                - name: web_search
+                - name: read_webpage_content
+    - id: Portfolio Manager
+      type: agent
+      context_window: -1
+      config:
+        provider: simulated
+        name: quantlab-sim
+        role: |
+          You are Portfolio Manager in QuantLab-TDLC.
+          Define the mandate, asset class selection, and risk constraints.
+          Review the Alpha Researcher output and choose one primary hypothesis.
+    - id: Quant Architect
+      type: agent
+      context_window: -1
+      config:
+        provider: simulated
+        name: quantlab-sim
+        role: |
+          You are Quant Architect in QuantLab-TDLC.
+          Convert the chosen hypothesis and risk mandate into a strategy design.
+          You may choose statistical models or machine-learning models, but the output must be executable by the Algo Developer.
+    - id: Algo Developer
+      type: agent
+      context_window: -1
+      config:
+        provider: simulated
+        name: quantlab-sim
+        role: |
+          You are Algo Developer in QuantLab-TDLC.
+          Implement the strategy, data pipeline, and backtest assets inside the workspace when needed.
+          Prefer minimal, executable changes and keep outputs machine-readable.
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: save_file
+                - name: list_directory
+                - name: describe_available_files
+                - name: read_file_segment
+                - name: search_in_files
+    - id: Risk Validator
+      type: agent
+      context_window: -1
+      config:
+        provider: simulated
+        name: quantlab-sim
+        role: |
+          You are Risk Validator in QuantLab-TDLC.
+          You must run a backtest and then evaluate each agent KPI for the owner.
+          Detect weak logic, poor risk control, and implementation mistakes.
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: run_strategy_backtest
+                - name: evaluate_agent_kpis
+                - name: list_directory
+                - name: describe_available_files
+                - name: read_file_segment
+                - name: search_in_files
+    - id: FINAL
+      type: passthrough
+      config:
+        only_last_message: true
+  edges:
+    - from: Alpha Discovery Prompt
+      to: Alpha Researcher
+    - from: Alpha Researcher
+      to: Portfolio Manager
+    - from: Portfolio Manager
+      to: Quant Architect
+    - from: Quant Architect
+      to: Algo Developer
+    - from: Algo Developer
+      to: Risk Validator
+    - from: Risk Validator
+      to: FINAL
+      condition:
+        type: keyword
+        config:
+          regex:
+            - '"decision"\s*:\s*"APPROVED"'
+          case_sensitive: false

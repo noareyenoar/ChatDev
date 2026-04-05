@@ -1,0 +1,338 @@
+version: 0.4.0
+graph:
+  id: QuantLab_TDLC_ollama_local
+  description: QuantLab TDLC workflow tuned for a local Ollama OpenAI-compatible endpoint.
+  log_level: INFO
+  is_majority_voting: false
+  initial_instruction: |
+    Company owner mandate: run QuantLab locally through Ollama.
+    Keep every agent output machine-readable JSON.
+    Prefer direct reasoning over unnecessary tool use.
+    Prefer local datasets under raw_data_and_backtest/ when available.
+    For this workspace, treat D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT_backtest.csv as the primary compatible backtest dataset.
+    Agents may browse and mine additional datasets from internet sources when useful.
+    The Risk Validator must run the backtest and score each agent contribution so the owner can review retain, suspend, or dismiss decisions.
+  start:
+    - Alpha Discovery Prompt
+  end:
+    - FINAL
+  nodes:
+    - id: Alpha Discovery Prompt
+      type: literal
+      description: Seed instruction for the local Ollama QuantLab chain.
+      config:
+        role: user
+        content: |
+          Build a quantitative trading research loop with these phases:
+          1. Alpha_Discovery
+          2. Model_Architecture
+          3. Signal_Engineering
+          4. Backtest_Execution
+          5. Recursive_Optimization
+
+          Use strict JSON outputs only.
+          Minimize unnecessary tool calls.
+          Use local datasets under raw_data_and_backtest/ whenever possible.
+          It is valid to browse and mine additional datasets from internet sources.
+          The final Risk Validator output must include:
+          - decision: APPROVED, REVISE_MODEL, or REVISE_IMPLEMENTATION
+          - backtest_metrics
+          - agent_kpis
+          - owner_summary
+    - id: Optimization Guard
+      type: loop_counter
+      description: Stops recursive optimization after five failed review cycles.
+      config:
+        max_iterations: 5
+        reset_on_emit: true
+        message: '{"decision":"HALT","status":"MAX_OPTIMIZATION_REACHED","reason":"Recursive optimization limit reached"}'
+    - id: Alpha Researcher
+      type: agent
+      context_window: -1
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: llama3.1:8b
+        params:
+          protocol: chat
+          temperature: 0.2
+          timeout: 300
+        role: |
+          You are Alpha Researcher in QuantLab-TDLC.
+          Your job is to retrieve market context, macro themes, and state-of-the-art quant ideas.
+          You can mine datasets from two channels:
+          1) Local datasets under raw_data_and_backtest/raw_data, raw_data_and_backtest/prepared_dataset, and raw_data_and_backtest/data.
+          2) Internet data sources via search tools and market data tools.
+          Use the available research tools only when they materially improve the answer.
+
+          Return strict JSON only with this shape:
+          {
+            "phase": "Alpha_Discovery",
+            "market_view": "...",
+            "candidate_datasets": [
+              {"path_or_url": "...", "source_type": "local|internet", "why": "..."}
+            ],
+            "tradable_universe": ["..."],
+            "hypotheses": [
+              {"name": "...", "rationale": "...", "evidence": ["..."]}
+            ],
+            "research_kpi": {
+              "agent": "Alpha Researcher",
+              "phase": "Alpha_Discovery",
+              "quality_score": 0.0,
+              "decision_confidence": 0.0,
+              "timeliness_score": 1.0,
+              "error_penalty": 0.0,
+              "risk_flags": 0
+            }
+          }
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: search_market_intelligence
+                - name: search_arxiv_papers
+                - name: fetch_price_history
+                - name: web_search
+                - name: read_webpage_content
+                - name: list_directory
+    - id: Portfolio Manager
+      type: agent
+      context_window: -1
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: mistral-nemo:12b
+        params:
+          protocol: chat
+          temperature: 0.2
+          timeout: 300
+        role: |
+          You are Portfolio Manager in QuantLab-TDLC.
+          Define the mandate, asset class selection, and risk constraints.
+          Review the Alpha Researcher output and choose one primary hypothesis.
+
+          Return strict JSON only with this shape:
+          {
+            "phase": "Alpha_Discovery",
+            "chosen_hypothesis": "...",
+            "asset_universe": ["..."],
+            "risk_constraints": {
+              "max_drawdown": 0.2,
+              "gross_exposure_limit": 1.0
+            },
+            "success_thresholds": {
+              "min_sharpe": 1.0,
+              "min_sortino": 1.0,
+              "min_total_return": 0.0
+            },
+            "manager_kpi": {
+              "agent": "Portfolio Manager",
+              "phase": "Alpha_Discovery",
+              "quality_score": 0.0,
+              "decision_confidence": 0.0,
+              "timeliness_score": 1.0,
+              "error_penalty": 0.0,
+              "risk_flags": 0
+            }
+          }
+    - id: Quant Architect
+      type: agent
+      context_window: -1
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: qwen2.5:7b
+        params:
+          protocol: chat
+          temperature: 0.1
+          timeout: 300
+        role: |
+          You are Quant Architect in QuantLab-TDLC.
+          Convert the chosen hypothesis and risk mandate into a strategy design.
+          You may choose statistical models or machine-learning models, but the output must be executable by the Algo Developer.
+
+          Return strict JSON only with this shape:
+          {
+            "phase": "Model_Architecture",
+            "model_family": "...",
+            "signal_definition": "...",
+            "features": ["..."],
+            "implementation_notes": ["..."],
+            "targets": {
+              "min_sharpe": 1.0,
+              "min_sortino": 1.0,
+              "max_drawdown": 0.2,
+              "min_total_return": 0.0
+            },
+            "architect_kpi": {
+              "agent": "Quant Architect",
+              "phase": "Model_Architecture",
+              "quality_score": 0.0,
+              "decision_confidence": 0.0,
+              "timeliness_score": 1.0,
+              "error_penalty": 0.0,
+              "risk_flags": 0
+            }
+          }
+    - id: Algo Developer
+      type: agent
+      context_window: -1
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: qwen2.5-coder:7b
+        params:
+          protocol: chat
+          temperature: 0.0
+          timeout: 300
+        role: |
+          You are Algo Developer in QuantLab-TDLC.
+          Implement the strategy, data pipeline, and backtest assets inside the workspace when needed.
+          Prefer local datasets inside raw_data_and_backtest/ first.
+          Before selecting a CSV, inspect raw_data_and_backtest/prepared_dataset and raw_data_and_backtest/data.
+          If no suitable local CSV exists, fetch internet market data and save a CSV under raw_data_and_backtest/data/.
+          Prefer minimal, executable changes and keep outputs machine-readable.
+          Do not return a function-call envelope object like {"name":...,"arguments":...}.
+          Return only the requested JSON shape.
+          For this workspace, prefer one of these exact CSV paths:
+          - D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT_backtest.csv
+          - D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT.csv
+
+          Return strict JSON only with this shape:
+          {
+            "phase": "Signal_Engineering",
+            "files_changed": ["relative/path.py"],
+            "run_command": "uv run ...",
+            "backtest_contract": {
+              "price_csv": "D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT_backtest.csv",
+              "symbol": null,
+              "strategy_config": {"type": "moving_average_crossover", "short_window": 20, "long_window": 50}
+            },
+            "developer_kpi": {
+              "agent": "Algo Developer",
+              "phase": "Signal_Engineering",
+              "quality_score": 0.0,
+              "decision_confidence": 0.0,
+              "timeliness_score": 1.0,
+              "error_penalty": 0.0,
+              "risk_flags": 0
+            }
+          }
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: read_file_segment
+                - name: search_in_files
+                - name: save_file
+                - name: list_directory
+                - name: fetch_price_history
+                - name: web_search
+                - name: read_webpage_content
+    - id: Risk Validator
+      type: agent
+      context_window: -1
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: llama3-groq-tool-use:8b
+        params:
+          protocol: chat
+          temperature: 0.0
+          timeout: 300
+        role: |
+          You are Risk Validator in QuantLab-TDLC.
+          You must run a backtest and then evaluate each agent KPI for the owner.
+          Detect weak logic, poor risk control, and implementation mistakes.
+          Before running backtest, inspect local dataset folders and choose an existing CSV when possible:
+          - raw_data_and_backtest/prepared_dataset
+          - raw_data_and_backtest/data
+          Prefer local CSV backtests for this workspace. Known valid starters are:
+          - D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT_backtest.csv
+          - D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT.csv
+          First attempt should call run_strategy_backtest with price_csv set to an existing local file and symbol omitted.
+          If local CSV fails, then run a fallback symbol-based backtest with symbol SPY.
+          When tool use is needed, invoke the actual provided function tools.
+          Do not output a JSON object with keys like "name" and "arguments" as a substitute for a tool call.
+
+          Use decision values exactly as follows:
+          - APPROVED
+          - REVISE_MODEL
+          - REVISE_IMPLEMENTATION
+
+          Return strict JSON only with this shape:
+          {
+            "phase": "Recursive_Optimization",
+            "decision": "APPROVED",
+            "backtest_metrics": {},
+            "fail_reasons": [],
+            "agent_kpis": [],
+            "owner_summary": {}
+          }
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: run_strategy_backtest
+                - name: evaluate_agent_kpis
+                - name: read_file_segment
+                - name: search_in_files
+                - name: list_directory
+    - id: FINAL
+      type: passthrough
+      config:
+        only_last_message: true
+  edges:
+    - from: Alpha Discovery Prompt
+      to: Alpha Researcher
+    - from: Alpha Researcher
+      to: Portfolio Manager
+    - from: Portfolio Manager
+      to: Quant Architect
+    - from: Quant Architect
+      to: Algo Developer
+    - from: Algo Developer
+      to: Risk Validator
+    - from: Risk Validator
+      to: FINAL
+      condition:
+        type: keyword
+        config:
+          regex:
+            - '"decision"\s*:\s*"APPROVED"'
+          case_sensitive: false
+    - from: Risk Validator
+      to: Quant Architect
+      condition:
+        type: keyword
+        config:
+          regex:
+            - '"decision"\s*:\s*"REVISE_MODEL"'
+          case_sensitive: false
+    - from: Risk Validator
+      to: Algo Developer
+      condition:
+        type: keyword
+        config:
+          regex:
+            - '"decision"\s*:\s*"REVISE_IMPLEMENTATION"'
+          case_sensitive: false
+    - from: Risk Validator
+      to: Optimization Guard
+      condition:
+        type: keyword
+        config:
+          regex:
+            - '"decision"\s*:\s*"REVISE_MODEL"'
+            - '"decision"\s*:\s*"REVISE_IMPLEMENTATION"'
+          case_sensitive: false
+    - from: Optimization Guard
+      to: Quant Architect
+    - from: Optimization Guard
+      to: FINAL

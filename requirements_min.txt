@@ -1,0 +1,9 @@
+pyyaml
+fastapi==0.124.0
+uvicorn
+requests
+tenacity
+pydantic==2.12.5
+numpy
+pandas
+pytest

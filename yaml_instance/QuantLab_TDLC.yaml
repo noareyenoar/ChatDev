@@ -1,7 +1,7 @@
 version: 0.4.0
 vars:
-  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
-  OLLAMA_API_KEY: ${OLLAMA_API_KEY}
+  OLLAMA_BASE_URL: ${BASE_URL}
+  OLLAMA_API_KEY: ${API_KEY}
 graph:
   id: QuantLab_TDLC
   description: Hypothesis-driven quantitative research workflow with research, design, implementation, backtesting, and recursive optimization.

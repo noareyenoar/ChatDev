@@ -28,6 +28,17 @@
             </label>
             <p class="setting-desc">Show contextual help tooltips throughout the workflow interface.</p>
           </div>
+          <div class="settings-item">
+            <label class="field-label" for="workflow-variables-json">Workflow Variable Overrides</label>
+            <textarea
+              id="workflow-variables-json"
+              v-model="localConfig.WORKFLOW_VARIABLES_JSON"
+              class="settings-textarea"
+              placeholder='{"BASE_URL":"http://localhost:11434/v1","API_KEY":"ollama"}'
+              spellcheck="false"
+            ></textarea>
+            <p class="setting-desc">Optional JSON object sent with Launch requests as workflow variable overrides.</p>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="cancel-button" @click="close">Cancel</button>
@@ -52,7 +63,8 @@ const props = defineProps({
 const localConfig = reactive({
   AUTO_SHOW_ADVANCED: false,
   AUTO_EXPAND_MESSAGES: false,
-  ENABLE_HELP_TOOLTIPS: true
+  ENABLE_HELP_TOOLTIPS: true,
+  WORKFLOW_VARIABLES_JSON: ''
 })
 
 watch(() => props.isVisible, (newVal) => {
@@ -164,12 +176,44 @@ const save = () => {
   cursor: pointer;
 }
 
+.field-label {
+  display: block;
+  color: #e0e0e0;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.settings-textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #111;
+  color: #f5f5f5;
+  padding: 10px 12px;
+  font: 13px/1.5 Consolas, Monaco, monospace;
+  box-sizing: border-box;
+}
+
+.settings-textarea:focus {
+  outline: none;
+  border-color: #4facfe;
+  box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.15);
+}
+
 .setting-desc {
   margin-left: 26px;
   color: #8b949e;
   font-size: 13px;
   line-height: 1.4;
   margin-top: 0;
+}
+
+.field-label + .setting-desc,
+.settings-textarea + .setting-desc {
+  margin-left: 0;
+  margin-top: 8px;
 }
 
 .modal-footer {

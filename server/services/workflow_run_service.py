@@ -61,6 +61,7 @@ class WorkflowRunService:
         websocket_manager,
         *,
         attachments: Optional[List[str]] = None,
+        variables: Optional[dict] = None,
         log_level: Optional[LogLevel] = None,
     ) -> None:
         normalized_yaml_name = (yaml_file or "").strip()
@@ -98,6 +99,7 @@ class WorkflowRunService:
                 task_prompt,
                 websocket_manager,
                 attachments,
+                variables,
                 log_level,
             )
         except ValidationError as exc:
@@ -140,12 +142,13 @@ class WorkflowRunService:
         task_prompt: str,
         websocket_manager,
         attachments: List[str],
+        variables: Optional[dict],
         log_level: LogLevel,
     ) -> None:
         session = self.session_store.get_session(session_id)
         cancel_event = session.cancel_event if session else None
         try:
-            design = load_config(yaml_path)
+            design = load_config(yaml_path, vars_override=variables)
             graph_config = GraphConfig.from_definition(
                 design.graph,
                 name=f"session_{session_id}",

@@ -1,5 +1,8 @@
 """Utilities for loading, validating design_0.4.0 workflows."""
 
+import argparse
+import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -10,10 +13,6 @@ from entity.config_loader import prepare_design_mapping
 from entity.configs import DesignConfig, ConfigError
 from schema_registry import iter_node_schemas
 from utils.io_utils import read_yaml
-
-
-ensure_schema_registry_populated()
-
 
 class DesignError(RuntimeError):
     """Raised when a workflow design cannot be loaded or validated."""
@@ -57,6 +56,8 @@ def load_config(
 ) -> DesignConfig:
     """Load, validate, and sanity-check a workflow file."""
 
+    ensure_schema_registry_populated()
+
     try:
         raw_data = read_yaml(config_path)
     except FileNotFoundError as exc:
@@ -97,6 +98,8 @@ def load_config(
 
 
 def check_config(yaml_content: Any) -> str:
+    ensure_schema_registry_populated()
+
     if not isinstance(yaml_content, dict):
         return "YAML root must be a mapping"
 
@@ -119,3 +122,72 @@ def check_config(yaml_content: Any) -> str:
         return str(e)
 
     return ""
+
+
+def _parse_vars_override(raw: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise DesignError(f"Invalid --vars JSON: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise DesignError("--vars must decode to a JSON object")
+    return parsed
+
+
+def _parse_key_value_vars(raw_items: list[str]) -> Dict[str, Any]:
+    parsed: Dict[str, Any] = {}
+    for item in raw_items:
+        if "=" not in item:
+            raise DesignError(f"Invalid --var value '{item}'. Expected KEY=VALUE")
+        key, value = item.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise DesignError(f"Invalid --var value '{item}'. KEY cannot be empty")
+        parsed[key] = value
+    return parsed
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Validate and load a workflow YAML file")
+    parser.add_argument("--path", required=True, help="Path to the workflow YAML file")
+    parser.add_argument(
+        "--fn-module",
+        dest="fn_module",
+        default=None,
+        help="Optional module name or file path for edge helper functions",
+    )
+    parser.add_argument(
+        "--vars",
+        dest="vars_override",
+        default=None,
+        help="Optional JSON object overriding workflow vars during validation",
+    )
+    parser.add_argument(
+        "--var",
+        dest="var_items",
+        action="append",
+        default=[],
+        help="Repeatable workflow variable override in KEY=VALUE format",
+    )
+    args = parser.parse_args()
+
+    try:
+        vars_override = _parse_vars_override(args.vars_override) or {}
+        vars_override.update(_parse_key_value_vars(args.var_items))
+        load_config(
+            Path(args.path),
+            fn_module=args.fn_module,
+            vars_override=vars_override or None,
+        )
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(f"Validation OK: {args.path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

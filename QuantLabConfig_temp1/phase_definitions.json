@@ -1,0 +1,35 @@
+{
+  "phases": [
+    {
+      "id": "Alpha_Discovery",
+      "objective": "Collect market context, research signals, and initial tradable hypotheses.",
+      "primary_agents": ["Alpha Researcher", "Portfolio Manager"],
+      "deliverable": "A JSON research brief with hypotheses, universe, mandate, and success thresholds."
+    },
+    {
+      "id": "Model_Architecture",
+      "objective": "Translate the chosen alpha into a statistical or machine learning design.",
+      "primary_agents": ["Quant Architect"],
+      "deliverable": "A JSON architecture spec with features, labels, signal logic, and evaluation targets."
+    },
+    {
+      "id": "Signal_Engineering",
+      "objective": "Implement the data pipeline, strategy logic, and backtest contract.",
+      "primary_agents": ["Algo Developer"],
+      "deliverable": "Code changes plus a JSON implementation report describing files, dependencies, and run commands."
+    },
+    {
+      "id": "Backtest_Execution",
+      "objective": "Run the strategy on historical data and capture financial metrics.",
+      "primary_agents": ["Risk Validator"],
+      "deliverable": "A JSON validation packet with Sharpe, Sortino, max drawdown, returns, and failure reasons."
+    },
+    {
+      "id": "Recursive_Optimization",
+      "objective": "Route the system back to model design or implementation when metrics miss thresholds.",
+      "primary_agents": ["Risk Validator", "Quant Architect", "Algo Developer"],
+      "deliverable": "A JSON decision using APPROVED, REVISE_MODEL, or REVISE_IMPLEMENTATION."
+    }
+  ],
+  "max_recursive_loops": 5
+}

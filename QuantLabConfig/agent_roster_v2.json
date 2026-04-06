@@ -1,0 +1,94 @@
+{
+  "project": "QuantLab-TDLC-V2",
+  "version": "2.0-profitability-optimized",
+  "runtime": {
+    "provider": "ollama-openai-compatible",
+    "base_url_env": "OLLAMA_BASE_URL",
+    "execution_mode": "sequential_model_loading",
+    "hardware_profile": "12GB_VRAM"
+  },
+  "design_philosophy": "Maximize profitability through diverse strategy candidates and rigorous parameter optimization",
+  "agents": [
+    {
+      "id": "Market Pattern Analyzer",
+      "phase_owner": "Alpha_Discovery",
+      "model": "llama3-groq-tool-use:8b",
+      "tools": [
+        "web_search",
+        "fetch_price_history",
+        "list_directory"
+      ],
+      "responsibility": "Identify profitable market patterns: mean reversion regimes, volatility clusters, momentum breaks. Analyze BTCUSDT, SPY, QQQ for profitability markers. Produce pattern JSON with win rates where possible.",
+      "enhanced_focus": "Find patterns with >52% win rate and positive expectancy"
+    },
+    {
+      "id": "Portfolio Manager",
+      "phase_owner": "Alpha_Discovery",
+      "model": "qwen3.5:9b",
+      "tools": [],
+      "responsibility": "Define mandate, asset universe (BTCUSDT, SPY, QQQ, etc), capital allocation, and profitability targets: min Sharpe 1.5, min return 15% annual, max drawdown 0.15.",
+      "enhanced_focus": "Select 2-3 assets with distinct volatility profiles for strategy diversification"
+    },
+    {
+      "id": "Strategy Engineer",
+      "phase_owner": "Model_Architecture",
+      "model": "qwen3.5:9b",
+      "tools": [],
+      "responsibility": "Design multiple strategy candidates: (1) Mean Reversion with Bollinger Bands & RSI, (2) Momentum with MACD & ADX, (3) Volatility-Based with Keltner Channels, (4) ML-based momentum with lagged returns. Define entry/exit rules, position sizing, stop-loss levels for each.",
+      "enhanced_focus": "Provide 3-4 distinct strategy archetypes with clear implementation guides"
+    },
+    {
+      "id": "Signal Designer",
+      "phase_owner": "Signal_Engineering",
+      "model": "qwen2.5:7b",
+      "tools": [
+        "init_python_env",
+        "install_python_packages",
+        "save_file",
+        "read_file_segment"
+      ],
+      "responsibility": "Implement all strategy signals from Strategy Engineer: compute technical indicators (RSI, Bollinger Bands, MACD, ADX, Keltner), combine into entry/exit logic with position sizing. Produce production-ready signal code.",
+      "enhanced_focus": "Generate 3-4 parallel signal implementations ready for backtesting"
+    },
+    {
+      "id": "Parameter Optimizer",
+      "phase_owner": "Signal_Engineering",
+      "model": "qwen2.5:7b",
+      "tools": [
+        "init_python_env",
+        "install_python_packages",
+        "save_file",
+        "read_file_segment",
+        "search_in_files"
+      ],
+      "responsibility": "Grid-search optimal parameters for each strategy across BTCUSDT/SPY/QQQ. Test RSI thresholds (20-80), Bollinger Band widths (1.5-3.0), MACD windows (6-26 fast, 17-35 slow), hold periods (1-5 days). Report best parameters with backtest metrics.",
+      "enhanced_focus": "Run 50-100 backtest combinations, identify top 3 parameter sets by Sharpe ratio"
+    },
+    {
+      "id": "Strategy Validator",
+      "phase_owner": "Backtest_Execution",
+      "model": "llama3-groq-tool-use:8b",
+      "tools": [
+        "run_strategy_backtest",
+        "read_file_segment",
+        "list_directory"
+      ],
+      "responsibility": "Execute out-of-sample backtest for each strategy candidate (mean reversion, momentum, volatility, ML). Report Sharpe, Sortino, max drawdown, annual return, win rate, recovery factor for each. Rank by Sharpe ratio. Recommend top 2 strategies.",
+      "enhanced_focus": "Comparative analysis across 3+ strategies, select only those meeting profitability targets"
+    },
+    {
+      "id": "Strategy Selector",
+      "phase_owner": "Recursive_Optimization",
+      "model": "qwen3.5:9b",
+      "tools": [],
+      "responsibility": "Review all backtest results from Strategy Validator. Select best strategy by Sharpe + return metrics. For multi-asset: recommend allocation to top 2 strategies across different assets if diversification improves outcomes. Produce final decision with justification.",
+      "enhanced_focus": "Make go-no-go decision: APPROVED if Sharpe >1.5 and annual return >5%, REVISE if not"
+    }
+  ],
+  "agent_team_notes": {
+    "v1_issues": "Simple moving average strategy too naive; no parameter optimization; single signal architecture",
+    "v2_improvements": "Multiple strategy archetypes; parameter grid search; signal diversification; multi-asset support; explicit profitability thresholds",
+    "removal_rationale": "Legacy Quant Architect merged into Strategy Engineer for better output structure; Algo Developer split into Signal Designer + Parameter Optimizer for specialization",
+    "new_agents": ["Market Pattern Analyzer", "Strategy Engineer", "Signal Designer", "Parameter Optimizer", "Strategy Validator", "Strategy Selector"]
+  }
+}

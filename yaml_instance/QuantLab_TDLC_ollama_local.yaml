@@ -1,4 +1,7 @@
 version: 0.4.0
+vars:
+  OLLAMA_BASE_URL: http://127.0.0.1:11434/v1
+  OLLAMA_API_KEY: ollama
 graph:
   id: QuantLab_TDLC_ollama_local
   description: QuantLab TDLC workflow tuned for a local Ollama OpenAI-compatible endpoint.
@@ -43,21 +46,22 @@ graph:
       type: loop_counter
       description: Stops recursive optimization after five failed review cycles.
       config:
-        max_iterations: 5
+        max_iterations: 2
         reset_on_emit: true
         message: '{"decision":"HALT","status":"MAX_OPTIMIZATION_REACHED","reason":"Recursive optimization limit reached"}'
     - id: Alpha Researcher
       type: agent
-      context_window: -1
+      context_window: 4
       config:
         provider: openai
         base_url: ${OLLAMA_BASE_URL}
         api_key: ${OLLAMA_API_KEY}
-        name: llama3.1:8b
+        name: llama3-groq-tool-use:8b
         params:
           protocol: chat
           temperature: 0.2
-          timeout: 300
+          timeout: 120
+          max_tokens: 450
         role: |
           You are Alpha Researcher in QuantLab-TDLC.
           Your job is to retrieve market context, macro themes, and state-of-the-art quant ideas.
@@ -65,6 +69,7 @@ graph:
           1) Local datasets under raw_data_and_backtest/raw_data, raw_data_and_backtest/prepared_dataset, and raw_data_and_backtest/data.
           2) Internet data sources via search tools and market data tools.
           Use the available research tools only when they materially improve the answer.
+          First inspect local datasets and only perform at most one internet search call unless local data is missing.
 
           Return strict JSON only with this shape:
           {
@@ -91,24 +96,22 @@ graph:
           - type: function
             config:
               tools:
-                - name: search_market_intelligence
-                - name: search_arxiv_papers
                 - name: fetch_price_history
                 - name: web_search
-                - name: read_webpage_content
                 - name: list_directory
     - id: Portfolio Manager
       type: agent
-      context_window: -1
+      context_window: 4
       config:
         provider: openai
         base_url: ${OLLAMA_BASE_URL}
         api_key: ${OLLAMA_API_KEY}
-        name: mistral-nemo:12b
+        name: qwen3.5:9b
         params:
           protocol: chat
           temperature: 0.2
-          timeout: 300
+          timeout: 180
+          max_tokens: 500
         role: |
           You are Portfolio Manager in QuantLab-TDLC.
           Define the mandate, asset class selection, and risk constraints.
@@ -140,16 +143,17 @@ graph:
           }
     - id: Quant Architect
       type: agent
-      context_window: -1
+      context_window: 4
       config:
         provider: openai
         base_url: ${OLLAMA_BASE_URL}
         api_key: ${OLLAMA_API_KEY}
-        name: qwen2.5:7b
+        name: qwen3.5:9b
         params:
           protocol: chat
           temperature: 0.1
-          timeout: 300
+          timeout: 180
+          max_tokens: 700
         role: |
           You are Quant Architect in QuantLab-TDLC.
           Convert the chosen hypothesis and risk mandate into a strategy design.
@@ -180,16 +184,17 @@ graph:
           }
     - id: Algo Developer
       type: agent
-      context_window: -1
+      context_window: 4
       config:
         provider: openai
         base_url: ${OLLAMA_BASE_URL}
         api_key: ${OLLAMA_API_KEY}
-        name: qwen2.5-coder:7b
+        name: qwen2.5:7b
         params:
           protocol: chat
           temperature: 0.0
-          timeout: 300
+          timeout: 180
+          max_tokens: 800
         role: |
           You are Algo Developer in QuantLab-TDLC.
           Implement the strategy, data pipeline, and backtest assets inside the workspace when needed.
@@ -199,9 +204,16 @@ graph:
           Prefer minimal, executable changes and keep outputs machine-readable.
           Do not return a function-call envelope object like {"name":...,"arguments":...}.
           Return only the requested JSON shape.
+          Do not include markdown fences, backticks, or explanatory prose.
+          Do not call fetch_price_history for BTCUSDT in this workflow. Use the local CSV contract directly.
           For this workspace, prefer one of these exact CSV paths:
           - D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT_backtest.csv
           - D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT.csv
+          Strategy contract is strict:
+          - strategy_config.type must be exactly "moving_average_crossover"
+          - use only short_window and long_window keys in strategy_config
+          - when price_csv is provided, symbol must be null
+          - do not emit unsupported strategy types such as volatility_based
 
           Return strict JSON only with this shape:
           {
@@ -231,12 +243,11 @@ graph:
                 - name: search_in_files
                 - name: save_file
                 - name: list_directory
-                - name: fetch_price_history
                 - name: web_search
                 - name: read_webpage_content
     - id: Risk Validator
       type: agent
-      context_window: -1
+      context_window: 4
       config:
         provider: openai
         base_url: ${OLLAMA_BASE_URL}
@@ -245,7 +256,8 @@ graph:
         params:
           protocol: chat
           temperature: 0.0
-          timeout: 300
+          timeout: 120
+          max_tokens: 450
         role: |
           You are Risk Validator in QuantLab-TDLC.
           You must run a backtest and then evaluate each agent KPI for the owner.
@@ -260,6 +272,11 @@ graph:
           If local CSV fails, then run a fallback symbol-based backtest with symbol SPY.
           When tool use is needed, invoke the actual provided function tools.
           Do not output a JSON object with keys like "name" and "arguments" as a substitute for a tool call.
+          Never return an empty response. If uncertain, return decision REVISE_IMPLEMENTATION with fail_reasons populated.
+          Output must be strict JSON and must include a "decision" field every time.
+          Do not output prose outside the JSON object.
+          If backtest status is FAIL, decision must be REVISE_IMPLEMENTATION.
+          If all thresholds pass, decision must be APPROVED.
 
           Use decision values exactly as follows:
           - APPROVED
@@ -274,6 +291,16 @@ graph:
             "fail_reasons": [],
             "agent_kpis": [],
             "owner_summary": {}
+          }
+
+          Example FAIL response format (must still be strict JSON only):
+          {
+            "phase": "Recursive_Optimization",
+            "decision": "REVISE_IMPLEMENTATION",
+            "backtest_metrics": {"status": "FAIL"},
+            "fail_reasons": ["..."],
+            "agent_kpis": [],
+            "owner_summary": {"next_action": "revise implementation"}
           }
         tooling:
           - type: function
@@ -306,6 +333,21 @@ graph:
         config:
           regex:
             - '"decision"\s*:\s*"APPROVED"'
+            - '\bAPPROVED\b'
+          case_sensitive: false
+    - from: Risk Validator
+      to: FINAL
+      condition:
+        type: keyword
+        config:
+          regex:
+            - '"decision"\s*:\s*"REVISE_MODEL"'
+            - '"decision"\s*:\s*"REVISE_IMPLEMENTATION"'
+            - '\bREVISE_MODEL\b'
+            - '\bREVISE_IMPLEMENTATION\b'
+            - 'unsupported strategy type'
+            - 'backtest failed'
+            - 'please revise'
           case_sensitive: false
     - from: Risk Validator
       to: Quant Architect
@@ -314,6 +356,7 @@ graph:
         config:
           regex:
             - '"decision"\s*:\s*"REVISE_MODEL"'
+            - '\bREVISE_MODEL\b'
           case_sensitive: false
     - from: Risk Validator
       to: Algo Developer
@@ -322,6 +365,7 @@ graph:
         config:
           regex:
             - '"decision"\s*:\s*"REVISE_IMPLEMENTATION"'
+            - '\bREVISE_IMPLEMENTATION\b'
           case_sensitive: false
     - from: Risk Validator
       to: Optimization Guard
@@ -331,6 +375,8 @@ graph:
           regex:
             - '"decision"\s*:\s*"REVISE_MODEL"'
             - '"decision"\s*:\s*"REVISE_IMPLEMENTATION"'
+            - '\bREVISE_MODEL\b'
+            - '\bREVISE_IMPLEMENTATION\b'
           case_sensitive: false
     - from: Optimization Guard
       to: Quant Architect

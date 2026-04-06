@@ -23,18 +23,39 @@ Important note:
 These model tags are already installed and usable now:
 - `llama3.1:8b`
 - `mistral-nemo:12b`
-- `qwen2.5:7b`
+- `qwen3.5:9b`
 - `qwen2.5-coder:7b`
 - `llama3-groq-tool-use:8b`
+- `phi4-mini-reasoning:3.8b`
 - `deepseek-r1:8b`
 - `deepseek-r1:14b`
 
-The local workflow variant created for this machine uses:
-- Alpha Researcher: `llama3.1:8b`
-- Portfolio Manager: `mistral-nemo:12b`
-- Quant Architect: `qwen2.5:7b`
-- Algo Developer: `qwen2.5-coder:7b`
-- Risk Validator: `qwen2.5-coder:7b`
+The local workflow variant currently runs in hybrid stability mode:
+- Alpha Researcher: `llama3-groq-tool-use:8b`
+- Portfolio Manager: `qwen3.5:9b`
+- Quant Architect: `qwen3.5:9b`
+- Algo Developer: `qwen2.5:7b`
+- Risk Validator: `llama3-groq-tool-use:8b`
+
+Reason:
+- keeps a tool-capable model for the research stage where internet mining may be needed
+- lowers CPU and RAM spikes
+- avoids model-specific tool support mismatches
+- always emits a final decision JSON even when validator requests revisions
+
+Notes:
+- non-coder qwen roles use `qwen3.5:9b`
+- strategy contract is pinned to `moving_average_crossover` for backtest compatibility
+
+## Optional GPU Runtime Profile
+
+If you start Ollama with your GPU profile script, this guide remains compatible. The profile in [../zenv_list_to_use_GPU](../zenv_list_to_use_GPU) sets DirectML and Vulkan-related env vars and then starts `ollama serve`.
+
+Recommended for your machine stability:
+- Keep `OLLAMA_NUM_GPU=1` and sequential workflow execution.
+- Prefer 7B-8B models for tool-heavy nodes.
+- Keep context windows limited (the workflow now uses reduced context windows).
+- Keep token budgets bounded to prevent runaway CPU/RAM usage.
 
 ## Recommended Environment Variables
 

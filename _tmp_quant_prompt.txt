@@ -1,0 +1,1 @@
+Design and validate a BTCUSDT quant strategy using local datasets first, then augment with internet data if needed. Provide strict final decision output.

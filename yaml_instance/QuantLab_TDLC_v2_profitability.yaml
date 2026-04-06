@@ -1,0 +1,496 @@
+version: 0.4.0
+vars:
+  OLLAMA_BASE_URL: http://127.0.0.1:11434/v1
+  OLLAMA_API_KEY: ollama
+graph:
+  id: QuantLab_TDLC_v2_profitability
+  description: QuantLab V2 - Enhanced workflow for profitable strategy discovery with multi-strategy evaluation and parameter optimization.
+  log_level: INFO
+  is_majority_voting: false
+  initial_instruction: |
+    Company owner mandate: Discover and validate profitable quantitative strategies.
+    PROFITABILITY TARGETS:
+    - Minimum Sharpe Ratio: 1.5
+    - Minimum Annual Return: 5%
+    - Maximum Drawdown: 15%
+    - Risk-Free Rate Assumption: 2%
+
+    STRATEGY ARCHETYPES TO EXPLORE:
+    1. Mean Reversion: Bollinger Bands + RSI, entry on oversold, exit on mean
+    2. Momentum: MACD + ADX, entry on momentum cross, exit on reversal
+    3. Volatility-Based: Keltner Channels + volatility regime detection
+    4. ML-Enhanced: Lagged returns + technical indicator combinations
+
+    ASSET UNIVERSE: BTCUSDT (crypto), SPY (large-cap), QQQ (tech)
+
+    All outputs must be strict JSON with clear metrics and recommendations.
+    Minimize tool use; focus on reasoning and signal design quality.
+    Use local datasets under raw_data_and_backtest/ as primary source.
+  start:
+    - Alpha Discovery Prompt
+  end:
+    - FINAL
+  nodes:
+    - id: Alpha Discovery Prompt
+      type: literal
+      description: V2 seed instruction for enhanced QuantLab with profitability focus.
+      config:
+        role: user
+        content: |
+          Execute Phase 1: Alpha Discovery
+          
+          OBJECTIVES:
+          1. Analyze market patterns in BTCUSDT (2017-2024), SPY (if available), QQQ (if available)
+          2. Identify profitable signals: mean reversion clusters, momentum breakouts, volatility spikes
+          3. Document win rates, payoff ratios, and regime transitions
+          4. Produce structured JSON with top 5 patterns ranked by expected value
+          
+          CONSTRAINTS:
+          - Use local datasets first (raw_data_and_backtest/)
+          - Focus only on patterns with >52% historical win rate
+          - Report maximum drawdown and recovery periods for each pattern
+          - Avoid overfit: use out-of-sample logic where possible
+
+    - id: Market Pattern Analyzer
+      type: agent
+      context_window: 4
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: llama3-groq-tool-use:8b
+        params:
+          protocol: chat
+          temperature: 0.3
+          timeout: 180
+          max_tokens: 600
+        role: |
+          You are Market Pattern Analyzer in QuantLab-TDLC-V2.
+          Your role: Identify market patterns with positive expectancy.
+          
+          Analyze BTCUSDT historical data (local CSV) for:
+          1. Mean reversion patterns: oversold (RSI<30) -> recovery
+          2. Momentum patterns: breakout (close > 20-day high) -> continuation
+          3. Volatility patterns: volatility spike -> mean reversion
+          4. Regime patterns: trending vs ranging market identification
+          
+          For each pattern, report:
+          - Win rate (% profitable trades)
+          - Average win vs average loss
+          - Expected value per signal
+          - Maximum consecutive losses
+          - Time spent in pattern regime
+          
+          Return strict JSON only:
+          {
+            "phase": "Alpha_Discovery",
+            "patterns_analyzed": [
+              {
+                "name": "mean_reversion_rsi_oversold",
+                "win_rate": 0.55,
+                "avg_win": 0.035,
+                "avg_loss": 0.025,
+                "expected_value": 0.0125,
+                "max_consecutive_losses": 3,
+                "regime_frequency": 0.15,
+                "rationale": "..."
+              }
+            ],
+            "recommended_assets": ["BTCUSDT", "SPY", "QQQ"],
+            "key_insights": "..."
+          }
+        tools:
+          - name: web_search
+            description: Search market intelligence and trading research
+          - name: fetch_price_history
+            description: Fetch OHLCV data from Yahoo Finance
+          - name: list_directory
+            description: Browse local dataset folders
+
+    - id: Portfolio Manager
+      type: agent
+      description: Defines mandate, asset allocation, and profitability targets.
+      config:
+        protocol: chat
+        model: qwen3.5:9b
+        temperature: 0.2
+        timeout: 180
+        max_tokens: 500
+        role: |
+          You are Portfolio Manager in QuantLab-TDLC-V2.
+          Your role: Define investment mandate and profitability targets.
+          
+          Review Market Pattern Analyzer output and select:
+          1. Primary asset: BTCUSDT (highest recent volatility)
+          2. Secondary assets for diversification: SPY or QQQ (if suitable data available)
+          3. Capital allocation: initial position sizing and leverage limits
+          4. Risk constraints: max portfolio drawdown 15%, volatility scaling for exits
+          
+          Define success thresholds:
+          - Sharpe Ratio >= 1.5
+          - Annual Return >= 5%
+          - Max Drawdown <= 15%
+          - Recovery Factor >= 2.0
+          
+          Return strict JSON only:
+          {
+            "phase": "Alpha_Discovery",
+            "mandate": {
+              "assets": ["BTCUSDT"],
+              "capital_allocation": {"BTCUSDT": 1.0},
+              "leverage": 1.0
+            },
+            "success_thresholds": {
+              "min_sharpe": 1.5,
+              "min_annual_return": 0.05,
+              "max_drawdown": 0.15,
+              "min_recovery_factor": 2.0
+            },
+            "risk_constraints": {
+              "max_position_size": 0.5,
+              "volatility_target": 0.15
+            },
+            "manager_reasoning": "..."
+          }
+        tools: []
+
+    - id: Strategy Engineer
+      type: agent
+      description: Designs multiple strategy archetypes with detailed signal definitions.
+      config:
+        protocol: chat
+        model: qwen3.5:9b
+        temperature: 0.3
+        timeout: 240
+        max_tokens: 800
+        role: |
+          You are Strategy Engineer in QuantLab-TDLC-V2.
+          Your role: Design 3-4 distinct strategy implementations.
+          
+          Given market patterns and mandate from previous agents, design:
+          
+          STRATEGY 1: Mean Reversion (Bollinger Bands + RSI)
+          - Entry: RSI < 30 AND price < lower Bollinger Band (2.0 std)
+          - Exit: Price > middle Bollinger Band OR 5-day hold
+          - Position size: 1 unit
+          - Stop loss: 2% below entry
+          
+          STRATEGY 2: Momentum (MACD + ADX)
+          - Entry: MACD line > signal line AND ADX > 25
+          - Exit: MACD line < signal line OR 10-day hold
+          - Position size: 1 unit
+          - Stop loss: 3% below entry
+          
+          STRATEGY 3: Volatility-Based (Keltner Channels)
+          - Entry: Close breaks above Keltner upper band
+          - Exit: Close re-enters Keltner band OR 7-day hold
+          - Position size: varies with volatility regime
+          - Stop loss: below opposite channel
+          
+          For each strategy, specify:
+          - Technical indicators needed
+          - Entry conditions (exact thresholds)
+          - Exit conditions (time-based or price-based)
+          - Position sizing rules
+          - Stop-loss and take-profit levels
+          
+          Return strict JSON only:
+          {
+            "phase": "Model_Architecture",
+            "strategies": [
+              {
+                "name": "mean_reversion_rsi_bb",
+                "signal_type": "mean_reversion",
+                "indicators": ["RSI(14)", "Bollinger_Bands(20,2.0)"],
+                "entry_logic": "RSI<30 AND price<lower_bb",
+                "exit_logic": "price>middle_bb OR hold_5d",
+                "position_sizing": "1.0",
+                "stop_loss_pct": 0.02,
+                "target_profit_pct": 0.05
+              }
+            ],
+            "implementation_notes": "...",
+            "expected_strategy_count": 3
+          }
+        tools: []
+
+    - id: Signal Designer
+      type: agent
+      description: Implements technical signal calculations and strategy logic.
+      config:
+        protocol: chat
+        model: qwen2.5:7b
+        temperature: 0.1
+        timeout: 240
+        max_tokens: 1000
+        role: |
+          You are Signal Designer in QuantLab-TDLC-V2.
+          Your role: Implement all strategies from Strategy Engineer.
+          
+          For each strategy, implement:
+          1. Technical indicator calculations: RSI, MACD, Bollinger Bands, ATR, ADX
+          2. Entry signal generation: boolean array where True = ready to enter
+          3. Exit signal generation: boolean array where True = ready to exit
+          4. Position management: track active trades, entry price, exit targets
+          5. P&L calculation: daily returns and cumulative equity curve
+          
+          Code requirements:
+          - Use vectorized pandas/numpy for efficiency
+          - Handle edge cases: gaps, delistings, volume spikes
+          - Track all trades for backtest statistics
+          - Support multiple timeframes (daily preferred)
+          
+          Output Python code implementing all 3 strategies in a single file:
+          signal_strategies_v2.py
+          
+          Code should have structure:
+          class MeanReversionSignal(BaseSignal):
+              def compute_indicators(self, df):
+              def generate_signals(self, df):
+          
+          class MomentumSignal(BaseSignal):
+              def compute_indicators(self, df):
+              def generate_signals(self, df):
+          
+          class VolatilitySignal(BaseSignal):
+              def compute_indicators(self, df):
+              def generate_signals(self, df):
+          
+          Return strict JSON with code summary:
+          {
+            "phase": "Signal_Engineering",
+            "file_created": "signal_engineering/signal_strategies_v2.py",
+            "strategies_implemented": ["mean_reversion", "momentum", "volatility"],
+            "total_lines_of_code": 500,
+            "test_ready": true,
+            "designer_notes": "..."
+          }
+        tools:
+          - name: init_python_env
+            description: Initialize Python environment for signal development
+          - name: save_file
+            description: Save signal implementation code
+          - name: read_file_segment
+            description: Reference existing implementations
+
+    - id: Parameter Optimizer
+      type: agent
+      description: Grid-searches optimal parameters for each strategy.
+      config:
+        protocol: chat
+        model: qwen2.5:7b
+        temperature: 0.0
+        timeout: 300
+        max_tokens: 1000
+        role: |
+          You are Parameter Optimizer in QuantLab-TDLC-V2.
+          Your role: Find best parameters for each strategy through systematic testing.
+          
+          For each strategy candidate, grid-search these parameters:
+          
+          MEAN REVERSION:
+          - RSI periods: [10, 14, 21]
+          - RSI oversold threshold: [20, 25, 30, 35]
+          - Bollinger Band periods: [15, 20, 25]
+          - Bollinger Band std dev: [1.5, 2.0, 2.5]
+          - Hold period days: [3, 5, 7]
+          
+          MOMENTUM:
+          - MACD fast: [6, 12]
+          - MACD slow: [17, 26, 35]
+          - MACD signal: [6, 9]
+          - ADX threshold: [20, 25, 30]
+          - Hold period days: [5, 10, 15]
+          
+          VOLATILITY:
+          - Keltner offset periods: [10, 20]
+          - Keltner offset multiplier: [1.0, 1.5, 2.0]
+          - Volatility lookback: [20, 30]
+          - Hold period days: [5, 7, 10]
+          
+          For each parameter combination:
+          - Run backtest on BTCUSDT_backtest.csv
+          - Record Sharpe ratio, annual return, max drawdown, win rate
+          - Rank all combinations by Sharpe ratio descending
+          
+          Return top 3 parameter sets per strategy:
+          {
+            "phase": "Signal_Engineering",
+            "parameter_search_summary": {
+              "mean_reversion": [
+                {
+                  "rank": 1,
+                  "params": {"rsi_period": 14, "rsi_threshold": 30, "bb_period": 20, "bb_std": 2.0, "hold_days": 5},
+                  "backtest_metrics": {"sharpe": 1.32, "annual_return": 0.08, "max_dd": 0.12, "win_rate": 0.58}
+                }
+              ]
+            },
+            "optimization_complete": true
+          }
+        tools:
+          - name: init_python_env
+            description: Setup backtest environment
+          - name: read_file_segment
+            description: Load signal implementations
+          - name: search_in_files
+            description: Find parameter sweep results
+
+    - id: Strategy Validator
+      type: agent
+      description: Executes backtest for all strategy candidates and ranks them.
+      config:
+        protocol: chat
+        model: llama3-groq-tool-use:8b
+        temperature: 0.1
+        timeout: 300
+        max_tokens: 800
+        role: |
+          You are Strategy Validator in QuantLab-TDLC-V2.
+          Your role: Backtest all strategy candidates and recommend best performers.
+          
+          Execute backtest for each strategy:
+          1. Mean Reversion with top 3 parameter sets
+          2. Momentum with top 3 parameter sets
+          3. Volatility with top 3 parameter sets
+          
+          For each backtest, record:
+          - Total return %
+          - Annual return %
+          - Annualized volatility
+          - Sharpe ratio (risk-free rate = 2%)
+          - Sortino ratio
+          - Max drawdown
+          - Win rate
+          - Recovery factor
+          - Ulcer index
+          
+          Rank all configurations by Sharpe ratio. Select top 2 overall:
+          - If top 2 from same strategy: recommend it
+          - If top 2 from different strategies: recommend BOTH for ensemble
+          
+          Return JSON comparison:
+          {
+            "phase": "Backtest_Execution",
+            "backtest_results": [
+              {
+                "strategy_name": "mean_reversion",
+                "parameters": {...},
+                "metrics": {
+                  "total_return": 0.15,
+                  "annual_return": 0.12,
+                  "sharpe": 1.45,
+                  "max_drawdown": 0.10,
+                  "win_rate": 0.58
+                },
+                "rank": 1
+              }
+            ],
+            "top_recommendation": "mean_reversion_bb_rsi",
+            "recommendation_confidence": 0.95
+          }
+        tools:
+          - name: run_strategy_backtest
+            description: Execute backtest for strategy configuration
+          - name: read_file_segment
+            description: Read backtest results
+          - name: list_directory
+            description: List available settings
+
+    - id: Strategy Selector
+      type: agent
+      description: Makes final go-no-go decision based on performance thresholds.
+      config:
+        protocol: chat
+        model: qwen3.5:9b
+        temperature: 0.2
+        timeout: 180
+        max_tokens: 600
+        role: |
+          You are Strategy Selector in QuantLab-TDLC-V2.
+          Your role: Make final investment decision for the owner.
+          
+          Review all strategy backtest results from Strategy Validator.
+          
+          Decision criteria:
+          - APPROVED: Top strategy Sharpe >= 1.5 AND annual return >= 5% AND max drawdown <= 15%
+          - REVISE_STRATEGY: Top strategy Sharpe >= 1.2 but below 1.5, OR other metrics weak
+          - REVISE_ARCHITECTURE: Top strategy Sharpe < 1.2, indicates fundamental redesign needed
+          
+          If APPROVED, provide implementation roadmap:
+          - Final parameters for production
+          - Position sizing guidance
+          - Risk management rules
+          - Rebalancing frequency
+          
+          Return JSON decision:
+          {
+            "phase": "Recursive_Optimization",
+            "decision": "APPROVED|REVISE_STRATEGY|REVISE_ARCHITECTURE",
+            "selected_strategy": "mean_reversion_bb_rsi",
+            "performance_summary": {
+              "sharpe": 1.45,
+              "annual_return": 0.12,
+              "max_drawdown": 0.10,
+              "win_rate": 0.58
+            },
+            "implementation_notes": "...",
+            "next_steps": "..."
+          }
+        tools: []
+
+    - id: Optimization Guard
+      type: loop_counter
+      description: Allows up to 3 iterations for strategy refinement if REVISE decision.
+      config:
+        max_iterations: 3
+        reset_on_emit: true
+
+    - id: FINAL
+      type: passthrough
+      description: Aggregates final strategy decision and comprehensive performance report.
+      config: {}
+
+  edges:
+    - from: Alpha Discovery Prompt
+      to: Market Pattern Analyzer
+      condition: always
+
+    - from: Market Pattern Analyzer
+      to: Portfolio Manager
+      condition: always
+
+    - from: Portfolio Manager
+      to: Strategy Engineer
+      condition: always
+
+    - from: Strategy Engineer
+      to: Signal Designer
+      condition: always
+
+    - from: Signal Designer
+      to: Parameter Optimizer
+      condition: always
+
+    - from: Parameter Optimizer
+      to: Strategy Validator
+      condition: always
+
+    - from: Strategy Validator
+      to: Strategy Selector
+      condition: always
+
+    - from: Strategy Selector
+      to: FINAL
+      condition: decision == "APPROVED"
+
+    - from: Strategy Selector
+      to: Optimization Guard
+      condition: decision in ["REVISE_STRATEGY", "REVISE_ARCHITECTURE"]
+
+    - from: Optimization Guard
+      to: Strategy Engineer
+      condition: iteration_count < max_iterations
+
+    - from: Optimization Guard
+      to: FINAL
+      condition: iteration_count >= max_iterations

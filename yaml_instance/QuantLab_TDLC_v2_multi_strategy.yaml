@@ -1,0 +1,486 @@
+version: 0.4.0
+vars:
+  OLLAMA_BASE_URL: http://127.0.0.1:11434/v1
+  OLLAMA_API_KEY: ollama
+graph:
+  id: QuantLab_TDLC_v2_multi_strategy
+  description: QuantLab V2 - Multi-Strategy Enhancement for Profitable Trading
+  log_level: INFO
+  is_majority_voting: false
+  initial_instruction: |
+    ENHANCED MANDATE: Discover PROFITABLE quantitative trading strategies.
+    
+    PROFITABILITY TARGETS (MANDATORY):
+    - Minimum Sharpe Ratio: 1.5
+    - Minimum Annual Return: 5%
+    - Maximum Drawdown: 15%
+    
+    STRATEGY ARCHETYPES TO TEST:
+    1. Mean Reversion: RSI oversold + Bollinger Bands mean reversion
+    2. Momentum: MACD breakout + ADX trend confirmation  
+    3. Volatility-Based: Keltner Channel breakouts
+    4. Hybrid: Combining multiple signals
+    
+    ASSET SCOPE: Primary BTCUSDT, secondary SPY/QQQ if data available
+    
+    INNOVATION vs V1: 
+    - Test 3-4 distinct strategy types (v1: only moving average)
+    - Grid-search parameters for each strategy (v1: fixed parameters)
+    - Enforce profitability thresholds strictly
+    - Support recursive optimization with selective agent use
+    - Track win rates, Sharpe ratios, recovery factors
+    
+    All outputs MUST be strict JSON with quantitative metrics.
+  start:
+    - Alpha Discovery Prompt
+  end:
+    - FINAL
+  nodes:
+    - id: Alpha Discovery Prompt
+      type: literal
+      description: V2 Enhanced seed instruction with multi-strategy focus.
+      config:
+        role: user
+        content: |
+          Phase 1: MARKET PATTERN ANALYSIS for PROFITABLE SIGNALS
+          
+          Task: Analyze BTCUSDT historical data (local CSV) to identify profitable patterns.
+          
+          Patterns to find:
+          1. Mean Reversion: How often does oversold (RSI<30) lead to recovery within 5 days? What is avg profit vs avg loss?
+          2. Momentum: How often do breakouts (close > 20-day high) lead to continuation? Payoff ratio?
+          3. Volatility: Do high volatility spikes lead to mean reversion? Win rate?
+          
+          For each pattern: Calculate win rate, average win/loss ratio, expected value.
+          
+          Output JSON with top 3 patterns ranked by expected value.
+
+    - id: Optimization Guard
+      type: loop_counter
+      description: Allow up to 3 iterations for strategy refinement
+      config:
+        max_iterations: 3
+        reset_on_emit: true
+        message: '{"decision":"MAX_OPTIMIZATION_REACHED","status":"Strategy refinement limit reached","reason":"3 iterations completed"}'
+
+    - id: Market Pattern Analyzer
+      type: agent
+      context_window: 4
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: llama3-groq-tool-use:8b
+        params:
+          protocol: chat
+          temperature: 0.3
+          timeout: 180
+          max_tokens: 700
+        role: |
+          You are Market Pattern Analyzer in QuantLab-TDLC-V2.
+          
+          Analyze BTCUSDT_backtest.csv to find profitable trading patterns.
+          
+          Calculate for each pattern:
+          - RSI oversold pattern (RSI<30): win rate, avg gain/loss, expected value
+          - Breakout pattern (close > 20 day high): win rate, continuation days, payoff ratio
+          - Volatility spike pattern (volatility > 1.5x moving avg): mean reversion rate, recovery days
+          
+          Return JSON:
+          {
+            "phase": "Alpha_Discovery",
+            "patterns": [
+              {
+                "name": "rsi_oversold_recovery",
+                "win_rate": 0.55,
+                "avg_win_pct": 3.5,
+                "avg_loss_pct": 2.1,
+                "expected_value": 0.0125,
+                "signal_frequency": 0.08,
+                "max_consecutive_losses": 4
+              }
+            ],
+            "recommended_strategies": ["mean_reversion", "volatility_based"],
+            "best_asset": "BTCUSDT"
+          }
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: web_search
+                - name: fetch_price_history
+                - name: list_directory
+
+    - id: Portfolio Manager
+      type: agent
+      context_window: 4
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: qwen3.5:9b
+        params:
+          protocol: chat
+          temperature: 0.2
+          timeout: 180
+          max_tokens: 600
+        role: |
+          You are Portfolio Manager in QuantLab-TDLC-V2.
+          
+          Review patterns from Market Pattern Analyzer and define investment mandate.
+          
+          Select:
+          - Primary asset: BTCUSDT
+          - Target Sharpe ratio: >= 1.5 (strict)
+          - Target annual return: >= 5% (strict)
+          - Maximum drawdown: <= 15% (strict)
+          - Capital allocation: 100% to best strategy initially
+          
+          Return JSON:
+          {
+            "phase": "Alpha_Discovery",
+            "mandate": {
+              "primary_asset": "BTCUSDT",
+              "target_sharpe": 1.5,
+              "target_annual_return": 0.05,
+              "max_drawdown": 0.15,
+              "capital_allocation": {"BTCUSDT": 1.0}
+            },
+            "success_criteria": {
+              "decision": "APPROVED if all thresholds met, otherwise REVISE"
+            }
+          }
+
+    - id: Strategy Engineer
+      type: agent
+      context_window: 4
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: qwen3.5:9b
+        params:
+          protocol: chat
+          temperature: 0.3
+          timeout: 240
+          max_tokens: 900
+        role: |
+          You are Strategy Engineer in QuantLab-TDLC-V2.
+          
+          Design 3 distinct trading strategies based on patterns identified:
+          
+          STRATEGY A: Mean Reversion with Bollinger Bands + RSI
+          - Entry: RSI < 35 AND price < lower BB (2.0 std, 20 period)
+          - Exit: Price crosses middle BB OR 5-day hold
+          - Position: 1.0 size
+          - Stop Loss: 2% below entry
+          - Target Profit: 3% above entry
+          
+          STRATEGY B: Momentum with MACD + ADX
+          - Entry: MACD > signal AND ADX > 25
+          - Exit: MACD < signal OR 8-day hold
+          - Position: 1.0 size
+          - Stop Loss: 3% below entry
+          - Target Profit: 4% above entry
+          
+          STRATEGY C: Volatility Breakout with Keltner Channels
+          - Entry: Close > upper Keltner band (ATR * 2.0, 20 period)
+          - Exit: Close < middle Keltner OR 6-day hold
+          - Position: 1.0 size
+          - Stop Loss: below opposite band
+          - Target Profit: 3% above entry
+          
+          For each strategy, provide:
+          - Technical indicators required
+          - Exact entry/exit logic
+          - Position sizing
+          - Risk management (stop/target)
+          
+          Return JSON:
+          {
+            "phase": "Model_Architecture",
+            "strategies": [
+              {
+                "name": "mean_reversion_bb_rsi",
+                "signal_type": "mean_reversion",
+                "indicators": ["RSI(14)", "BB(20,2.0)"],
+                "entry": "RSI<35 AND price<lower_bb",
+                "exit": "price>mid_bb OR hold_5d",
+                "stop_loss_pct": 0.02,
+                "target_profit_pct": 0.03
+              }
+            ],
+            "total_strategies": 3
+          }
+
+    - id: Algo Developer
+      type: agent
+      context_window: 4
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: qwen2.5:7b
+        params:
+          protocol: chat
+          temperature: 0.0
+          timeout: 240
+          max_tokens: 1200
+        role: |
+          You are Algo Developer in QuantLab-TDLC-V2.
+          
+          Implement ALL 3 strategies from Strategy Engineer:
+          1. Mean Reversion (Bollinger Bands + RSI)
+          2. Momentum (MACD + ADX)
+          3. Volatility Breakout (Keltner Channels)
+          
+          Create signal_strategies_v2.py with:
+          - Technical indicator calculations (RSI, MACD, BB, ATR, Keltner)
+          - Entry signal generation for each strategy
+          - Exit signal generation for each strategy
+          - Position management and P&L tracking
+          - Support for backtesting framework
+          
+          For backtest compatibility:
+          - Use price_csv: D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT_backtest.csv
+          - Symbol: null (use CSV only)
+          - Strategy type: multi_strategy (for orchestration)
+          
+          Return JSON with 3 backtest contracts:
+          {
+            "phase": "Signal_Engineering",
+            "file_created": "signal_engineering/signal_strategies_v2.py",
+            "strategies_implemented": ["mean_reversion", "momentum", "volatility"],
+            "backtest_contracts": [
+              {
+                "strategy_name": "mean_reversion_bb_rsi",
+                "price_csv": "D:/kp_ai_agent/QuantLab_TDLC/raw_data_and_backtest/prepared_dataset/BTCUSDT_backtest.csv",
+                "symbol": null,
+                "strategy_config": {"type": "moving_average_crossover", "short_window": 20, "long_window": 50}
+              }
+            ],
+            "code_lines": 600
+          }
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: init_python_env
+                - name: save_file
+                - name: read_file_segment
+                - name: search_in_files
+
+    - id: Parameter Optimizer
+      type: agent
+      context_window: 4
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: qwen2.5:7b
+        params:
+          protocol: chat
+          temperature: 0.0
+          timeout: 300
+          max_tokens: 1000
+        role: |
+          You are Parameter Optimizer in QuantLab-TDLC-V2.
+          
+          Grid-search optimal parameters for each strategy:
+          
+          Mean Reversion:
+          - RSI periods: [10, 14, 21]
+          - RSI threshold: [25, 30, 35, 40]
+          - BB periods: [15, 20, 25]
+          - BB std dev: [1.5, 2.0, 2.5]
+          
+          Momentum:
+          - MACD fast: [6, 12]
+          - MACD slow: [17, 26, 35]
+          - ADX threshold: [20, 25, 30]
+          
+          Volatility:
+          - Keltner periods: [10, 20]
+          - ATR multiplier: [1.5, 2.0, 2.5]
+          - Breakout threshold: [1, 1.5 std dev]
+          
+          For top 5 parameter combinations per strategy, report:
+          - Sharpe ratio
+          - Annual return
+          - Max drawdown
+          - Win rate
+          - Recovery factor
+          
+          Return JSON with top parameters:
+          {
+            "phase": "Signal_Engineering_Optimization",
+            "parameter_search_results": {
+              "mean_reversion": [
+                {
+                  "rank": 1,
+                  "parameters": {"rsi_period": 14, "rsi_threshold": 30, "bb_period": 20, "bb_std": 2.0},
+                  "metrics": {"sharpe": 1.55, "annual_return": 0.08, "max_dd": 0.12, "win_rate": 0.58}
+                }
+              ],
+              "momentum": [...],
+              "volatility": [...]
+            },
+            "optimization_complete": true
+          }
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: init_python_env
+                - name: read_file_segment
+                - name: search_in_files
+
+    - id: Strategy Validator
+      type: agent
+      context_window: 4
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: llama3-groq-tool-use:8b
+        params:
+          protocol: chat
+          temperature: 0.1
+          timeout: 300
+          max_tokens: 900
+        role: |
+          You are Strategy Validator in QuantLab-TDLC-V2.
+          
+          Backtest all 3 strategy types with top parameters:
+          1. Mean Reversion (Bollinger + RSI)
+          2. Momentum (MACD + ADX)
+          3. Volatility Breakout (Keltner)
+          
+          For each, execute backtest and record:
+          - Total return %
+          - Annualized return %
+          - Sharpe ratio (assuming 2% risk-free rate)
+          - Sortino ratio
+          - Max drawdown %
+          - Win rate %
+          - Recovery factor
+          
+          Rank all 3 by Sharpe ratio. 
+          
+          Return JSON comparison:
+          {
+            "phase": "Backtest_Execution",
+            "backtest_results": [
+              {
+                "strategy": "mean_reversion_bb_rsi",
+                "metrics": {
+                  "total_return": 0.15,
+                  "annual_return": 0.12,
+                  "sharpe": 1.55,
+                  "max_drawdown": 0.12,
+                  "win_rate": 0.58,
+                  "recovery_factor": 2.1
+                },
+                "rank": 1
+              }
+            ],
+            "best_strategy": "mean_reversion_bb_rsi",
+            "meets_thresholds": true
+          }
+        tooling:
+          - type: function
+            config:
+              tools:
+                - name: run_strategy_backtest
+                - name: read_file_segment
+                - name: list_directory
+
+    - id: Strategy Selector
+      type: agent
+      context_window: 4
+      config:
+        provider: openai
+        base_url: ${OLLAMA_BASE_URL}
+        api_key: ${OLLAMA_API_KEY}
+        name: qwen3.5:9b
+        params:
+          protocol: chat
+          temperature: 0.2
+          timeout: 180
+          max_tokens: 700
+        role: |
+          You are Strategy Selector in QuantLab-TDLC-V2.
+          
+          Review all backtest results and make final investment decision.
+          
+          Decision Logic:
+          - APPROVED: Top strategy Sharpe >= 1.5 AND annual_return >= 5% AND max_dd <= 15%
+          - REVISE_STRATEGY: Top strategy near thresholds; suggest parameter tweaks (Sharpe 1.2-1.5)
+          - REVISE_ARCHITECTURE: Best strategy Sharpe < 1.2; fundamental redesign needed
+          
+          For APPROVED: Provide production implementation guidance
+          
+          Return JSON decision:
+          {
+            "phase": "Recursive_Optimization",
+            "decision": "APPROVED|REVISE_STRATEGY|REVISE_ARCHITECTURE",
+            "selected_strategy": "mean_reversion_bb_rsi",
+            "performance_summary": {
+              "sharpe": 1.55,
+              "annual_return": 0.12,
+              "max_drawdown": 0.12,
+              "win_rate": 0.58
+            },
+            "rationale": "...",
+            "next_iteration_focus": "If REVISE: what to improve next"
+          }
+
+    - id: FINAL
+      type: passthrough
+      description: Aggregates final strategy decision and comprehensive performance report.
+      config: {}
+
+  edges:
+    - from: Alpha Discovery Prompt
+      to: Market Pattern Analyzer
+      condition: always
+
+    - from: Market Pattern Analyzer
+      to: Portfolio Manager
+      condition: always
+
+    - from: Portfolio Manager
+      to: Strategy Engineer
+      condition: always
+
+    - from: Strategy Engineer
+      to: Algo Developer
+      condition: always
+
+    - from: Algo Developer
+      to: Parameter Optimizer
+      condition: always
+
+    - from: Parameter Optimizer
+      to: Strategy Validator
+      condition: always
+
+    - from: Strategy Validator
+      to: Strategy Selector
+      condition: always
+
+    - from: Strategy Selector
+      to: FINAL
+      condition: decision == "APPROVED"
+
+    - from: Strategy Selector
+      to: Optimization Guard
+      condition: decision in ["REVISE_STRATEGY", "REVISE_ARCHITECTURE"]
+
+    - from: Optimization Guard
+      to: Strategy Engineer
+      condition: iteration_count < max_iterations
+
+    - from: Optimization Guard
+      to: FINAL
+      condition: iteration_count >= max_iterations

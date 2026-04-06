@@ -20,9 +20,10 @@ The current workspace already contains several enabling changes:
 The local Ollama server is reachable at `http://127.0.0.1:11434` and currently exposes these relevant models:
 - `llama3.1:8b`
 - `mistral-nemo:12b`
-- `qwen2.5:7b`
+- `qwen3.5:9b`
 - `qwen2.5-coder:7b`
 - `llama3-groq-tool-use:8b`
+- `phi4-mini-reasoning:3.8b`
 - `deepseek-r1:8b`
 - `deepseek-r1:14b`
 
@@ -54,15 +55,15 @@ Deferred until after a stable first run:
 
 ## Concrete Model Mapping
 
-Map QuantLab roles to installed local models as follows:
+Map QuantLab roles to the roster in `QuantLabConfig/agent_roster.json`:
 
 | Role | Local model | Reason |
 | --- | --- | --- |
-| Alpha Researcher | `llama3.1:8b` | available, general-purpose reasoning, acceptable for research summarization |
-| Portfolio Manager | `mistral-nemo:12b` | available and stronger general planner than the 7B tier |
-| Quant Architect | `qwen3.5:7b` | available replacement for missing `qwen2.5-math:7b` |
-| Algo Developer | `qwen2.5-coder:7b` | already installed and task-aligned |
-| Risk Validator | `qwen2.5-coder:7b` | installed and good enough for tool-based evaluation routing |
+| Alpha Researcher | `llama3-groq-tool-use:8b` | tool-capable kickoff role to avoid qwen3.5 startup hangs on this host |
+| Portfolio Manager | `qwen3.5:9b` | best-fit non-coder qwen role for stronger policy and planning output |
+| Quant Architect | `qwen3.5:9b` | best-fit non-coder qwen role for architecture quality |
+| Algo Developer | `qwen2.5:7b` | single-model mode with tool compatibility |
+| Risk Validator | `llama3-groq-tool-use:8b` | tool-capable validator with stronger post-tool JSON reliability |
 
 ## Execution Phases
 
@@ -74,7 +75,11 @@ Map QuantLab roles to installed local models as follows:
    - `api_key: ${OLLAMA_API_KEY}`
    - `params.protocol: chat`
 3. Replace unavailable or mismatched model tags with installed local tags.
-4. Remove optional search tools that depend on extra API keys from the first-pass researcher node.
+4. Keep internet dataset mining tools enabled for researcher and developer, while preferring local datasets first.
+5. Add a decision-normalization step so workflow completion does not depend on free-form model phrasing.
+6. Apply a hardware-safe profile for RX 6750 12GB: shorter context windows, lower max token budgets, and fewer high-latency internet tools.
+7. Use single-model mode when multi-model switching causes instability or poor performance.
+8. In stable runtime mode, cap recursive optimization cycles and always emit final decision JSON for owner review.
 
 ### Phase 2. Document The Operator Path
 
@@ -93,6 +98,7 @@ Map QuantLab roles to installed local models as follows:
 2. Hit the Ollama OpenAI-compatible chat endpoint with a small direct request.
 3. Run the new local workflow from CLI with a short deterministic prompt.
 4. If it fails, fix the root cause if it is repo-local and practical.
+5. Repeat in a correction loop until `FINAL` receives strict decision JSON.
 
 ### Phase 4. Decide What Needs User Input
 
